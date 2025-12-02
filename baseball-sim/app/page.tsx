@@ -2,67 +2,27 @@
 
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "./providers/AuthProvider";
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { getPlayerImageUrl } from "@/lib/utils";
 
-type Player = {
+// 스카우트 결과 표시용 타입
+type ScoutResult = {
   id: number;
   name: string;
-  birth_year: number;
-  overall: number;
   primary_position: string;
   secondary_position: string | null;
+  overall: number;
+  birth_year: number;
 };
 
 export default function Home() {
-  const { session } = useAuth();
-  const [players, setPlayers] = useState<Player[]>([]);
-  const [coins, setCoins] = useState<number>(0); 
-
-
-  // 유저 코인 조회
-  const fetchUserInfo = async () => {
-    if (!session) return;
-    const { data, error } = await supabase
-      .from("user_profile") 
-      .select("coins")
-      .eq("user_id", session.user.id)
-      .single();
-
-    if (error) {
-      console.error("코인 조회 실패:", error);
-    } else {
-      setCoins(data.coins);
-    }
-  };
-
-
-  // 유저 로스터 조회
-  const fetchPlayers = async () => {
-    if (!session) return;
-    const { data, error } = await supabase
-      .from("user_roster")
-      .select(`players(*)`)
-      .eq("user_id", session.user.id);
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setPlayers(data.map((row: any) => row.players));
-  };
-
-
-  // 데이터를 한 번에 갱신하는 헬퍼 함수 (새로고침 효과)
-  const refreshData = () => {
-    fetchUserInfo();
-    fetchPlayers();
-  };
+  const { session, refreshProfile } = useAuth();
+  const [scoutedPlayer, setScoutedPlayer] = useState<ScoutResult | null>(null);
+  const [isScouting, setIsScouting] = useState(false);
 
   const handleLogin = async () => {
     const email = prompt("이메일 입력");
     if (!email) return;
-
     const { error } = await supabase.auth.signInWithOtp({ email });
     if (error) alert(error.message);
     else alert("로그인 이메일이 전송되었습니다!");
@@ -70,57 +30,121 @@ export default function Home() {
 
   const handleScout = async () => {
     if (!session) return alert("로그인이 필요합니다.");
+    
+    setIsScouting(true);
+    setScoutedPlayer(null); // 이전 결과 초기화
 
-    const { data: result, error } = await supabase.rpc("scout_player", { user_id: session.user.id });
-    if (error) {
-      console.error(error);
-      alert("스카우트 실패: " + error.message);
-    } else {
-      alert("스카우트 성공! player id: " + result);
-      // 스카우트가 성공했으니, DB의 변경된 코인과 선수 명단을 다시 가져옴
-      refreshData(); 
+    try {
+      // 1. 스카우트 실행 (ID 반환)
+      const { data: newPlayerId, error } = await supabase.rpc("scout_player", { user_id: session.user.id });
+      
+      if (error) throw error;
+
+      // 2. 반환된 ID로 선수 상세 정보 조회
+      const { data: playerData, error: fetchError } = await supabase
+        .from("players")
+        .select("*")
+        .eq("id", newPlayerId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // 3. 결과 표시 및 코인 갱신
+      setScoutedPlayer(playerData);
+      refreshProfile();
+
+    } catch (err: any) {
+      alert("스카우트 실패: " + err.message);
+    } finally {
+      setIsScouting(false);
     }
   };
 
-  useEffect(() => {
-    if (session) {
-      refreshData();
-    }
-  }, [session]);
-
   return (
-    <div className="p-10">
-      {session ? (
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">구단주: {session.user.email}</h2>
-            {/* 5. 코인 표시 UI */}
-            <div className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full font-bold border border-yellow-400">
-              💰 보유 코인: {coins.toLocaleString()} G
-            </div>
+    <div className="text-center py-10">
+      <h1 className="text-4xl font-bold mb-6">⚾ Baseball Sim</h1>
+      
+      {!session ? (
+        <button onClick={handleLogin} className="bg-blue-600 text-white px-6 py-3 rounded-lg">
+          게임 시작하기 (로그인)
+        </button>
+      ) : (
+        <div className="space-y-8">
+          
+          {/* 스카우트 버튼 영역 */}
+          <div>
+            <p className="text-xl mb-4">새로운 유망주를 영입하세요!</p>
+            <button 
+              onClick={handleScout} 
+              disabled={isScouting}
+              className={`px-8 py-4 rounded-xl text-lg font-bold shadow-lg transition text-white
+                ${isScouting ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'}
+              `}
+            >
+              {isScouting ? "계약 진행 중..." : "선수 영입하기 (100 G)"}
+            </button>
           </div>
 
-          <button
-            onClick={handleScout}
-            className="mt-4 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-colors"
-          >
-            선수 스카우트 (100 G)
-          </button>
+          {scoutedPlayer && (
+  <div className="mt-8 animate-fade-in-up flex justify-center">
+    <div className="bg-white border-4 border-yellow-400 rounded-xl p-6 shadow-2xl max-w-sm w-full relative overflow-hidden">
+      {/* 카드 상단 장식 */}
+      <div className="absolute top-0 left-0 w-full h-3 bg-yellow-400"></div>
+      
+      <h3 className="text-gray-500 text-sm font-bold uppercase tracking-wider mb-4 text-center">
+        Scout Report
+      </h3>
 
-          <h3 className="mt-8 text-xl font-semibold border-b pb-2">내 선수 목록 ({players.length}명)</h3>
-          <ul className="mt-4 space-y-2">
-            {players.map((p) => (
-              <li key={p.id} className="bg-gray-50 p-3 rounded shadow-sm border flex justify-between">
-                <span>{p.name} ({p.birth_year})</span>
-                <span className="font-mono text-blue-600">OVR: {p.overall} | {p.primary_position}</span>
-              </li>
-            ))}
-          </ul>
+      {/* [추가됨] 선수 이미지 영역 */}
+      <div className="flex justify-center mb-4">
+        <div className="w-32 h-32 rounded-full border-4 border-blue-100 overflow-hidden bg-gray-50 shadow-inner">
+          {/* newPlayerId는 handleScout 함수 내부에 있어서 접근이 어려울 수 있으니, 
+              scoutedPlayer 객체에 id를 포함시키거나, 
+              방금 생성된 선수라면 DB조회 결과인 scoutedPlayer.id를 사용해야 합니다.
+              
+              *주의: page.tsx의 handleScout 함수에서 
+              setScoutedPlayer(playerData) 할 때 playerData에 id가 포함되어 있어야 합니다.
+          */}
+          <img 
+            src={getPlayerImageUrl(scoutedPlayer.id)} 
+            alt="선수 이미지"
+            className="w-full h-full object-cover"
+          />
         </div>
-      ) : (
-        <button onClick={handleLogin} className="bg-blue-600 text-white px-4 py-2 rounded">
-          로그인
-        </button>
+      </div>
+
+      <div className="text-3xl font-extrabold text-gray-800 mb-2 text-center">
+        {scoutedPlayer.name}
+      </div>
+      
+      <div className="flex justify-center items-center gap-4 my-4 bg-gray-50 p-4 rounded-lg">
+        <div className="text-center">
+          <div className="text-xs text-gray-400 font-bold">POS</div>
+          <div className="text-xl font-bold text-blue-600">
+            {scoutedPlayer.primary_position}
+            {scoutedPlayer.secondary_position && <span className="text-sm text-gray-400">/{scoutedPlayer.secondary_position}</span>}
+          </div>
+        </div>
+        <div className="w-px h-8 bg-gray-300"></div>
+        <div className="text-center">
+          <div className="text-xs text-gray-400 font-bold">OVR</div>
+          <div className="text-2xl font-black text-red-600">{scoutedPlayer.overall}</div>
+        </div>
+        <div className="w-px h-8 bg-gray-300"></div>
+        <div className="text-center">
+          <div className="text-xs text-gray-400 font-bold">AGE</div>
+          <div className="text-lg font-bold text-gray-600">{new Date().getFullYear() - scoutedPlayer.birth_year}</div>
+        </div>
+      </div>
+
+      <div className="text-center text-sm text-gray-500 font-medium">
+        "구단의 미래를 책임질 유망주입니다!"
+      </div>
+    </div>
+  </div>
+)}
+
+        </div>
       )}
     </div>
   );
