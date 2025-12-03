@@ -6,7 +6,10 @@ import { Session } from "@supabase/supabase-js";
 
 type UserProfile = {
   user_id: string;
+  email: string; // (선택) 편의상 넣어두면 좋음
   coins: number;
+  nickname: string;  // 추가
+  team_name: string; // 추가
 };
 
 type AuthContextType = {
@@ -29,7 +32,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from("user_profile") // 공유해주신 테이블 이름
-      .select("user_id, coins")
+      .select("user_id, coins, nickname, team_name") // 컬럼 추가
       .eq("user_id", userId)
       .single();
 

@@ -25,7 +25,9 @@ export const getPlayerImageUrl = (playerId: number) => {
       glassesProbability: '20',
   
       // 6. [배경색] 파스텔톤 유지
-      backgroundColor: 'b6e3f4,c0aede,d1d4f9',
+      backgroundColor: 'b6e3f4,c0aede,d1d4f9,ffd5dc,ffdfbf,ffffff,aaa8aa',
+
+      // backgroundType: 'solid,gradientLinear',
 
       skinColor: 'ffcb7e,f5d0c5',
     });

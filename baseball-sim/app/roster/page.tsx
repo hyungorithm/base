@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "../providers/AuthProvider";
 import { getPlayerImageUrl } from "@/lib/utils";
+import PlayerCardModal, { PlayerCardData } from "@/app/components/PlayerCardModal";
 
+// 타입 정의 업데이트 (스탯 정보 추가)
 type PlayerWithStatus = {
   roster_id: number;
   player_id: number;
@@ -12,7 +14,13 @@ type PlayerWithStatus = {
   primary_position: string;
   secondary_position: string | null;
   overall: number;
-  // 라인업 정보 (없으면 null)
+  // [추가] 여기서 필요한 정보들을 정의
+  birth_year: number;
+  stat_1: number;
+  stat_2: number;
+  stat_3: number;
+  tier: string;
+  
   lineup_info?: {
     type: string;
     order: number;
@@ -22,28 +30,25 @@ type PlayerWithStatus = {
 
 export default function RosterPage() {
   const { session } = useAuth();
-  const [roster, setRoster] = useState<PlayerWithStatus[]>([]);
+  const [roster, setRoster] = useState<PlayerWithStatus[]>([]); // any 대신 타입 사용 권장
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerCardData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       if (!session) return;
-
-      // 1. 내 보유 선수 전체 가져오기
+      
       const { data: rosterData } = await supabase
         .from("user_roster")
-        .select(`id, player_id, players(*)`)
+        .select(`id, player_id, players(*)`) 
         .eq("user_id", session.user.id);
 
-      // 2. 내 라인업 정보 가져오기
       const { data: lineupData } = await supabase
         .from("user_lineup")
         .select(`player_id, lineup_type, order_no, defensive_position`)
         .eq("user_id", session.user.id);
 
       if (rosterData) {
-        // 3. 두 데이터를 합치기
         const combined = rosterData.map((r: any) => {
-          // 이 선수가 라인업에 있는지 확인
           const usage = lineupData?.find((l: any) => l.player_id === r.player_id);
           
           return {
@@ -53,6 +58,14 @@ export default function RosterPage() {
             primary_position: r.players.primary_position,
             secondary_position: r.players.secondary_position,
             overall: r.players.overall,
+            
+            // [수정 1] 여기서 DB의 players 객체 안에 있는 정보를 꺼내서 저장해야 합니다.
+            birth_year: r.players.birth_year,
+            stat_1: r.players.stat_1,
+            stat_2: r.players.stat_2,
+            stat_3: r.players.stat_3,
+            tier: r.players.tier || "NORMAL", // 혹시 null이면 기본값
+
             lineup_info: usage ? {
               type: usage.lineup_type,
               order: usage.order_no,
@@ -69,6 +82,22 @@ export default function RosterPage() {
     fetchData();
   }, [session]);
 
+  const handlePlayerClick = (p: PlayerWithStatus) => {
+    const cardData: PlayerCardData = {
+      id: p.player_id,
+      name: p.name,
+      primary_position: p.primary_position,
+      secondary_position: p.secondary_position,
+      overall: p.overall,
+      birth_year: p.birth_year, // p.players.birth_year (X) -> p.birth_year (O)
+      stat_1: p.stat_1,
+      stat_2: p.stat_2,
+      stat_3: p.stat_3,
+      tier: p.tier, 
+    };
+    setSelectedPlayer(cardData);
+  };
+
   if (!session) return <div>로그인이 필요합니다.</div>;
 
   return (
@@ -76,9 +105,12 @@ export default function RosterPage() {
       <h2 className="text-2xl font-bold mb-4">보유 선수 목록</h2>
       <div className="grid gap-2">
       {roster.map((p) => (
-    <div key={p.roster_id} className="border p-3 rounded flex justify-between items-center bg-white shadow-sm hover:shadow-md transition">
+        <div 
+          key={p.roster_id} 
+          onClick={() => handlePlayerClick(p)}
+          className="border p-3 rounded flex justify-between items-center bg-white shadow-sm hover:shadow-md transition cursor-pointer hover:bg-blue-50"
+        >
         <div className="flex items-center gap-3">
-        {/* [추가됨] 작은 아바타 이미지 */}
         <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
             <img 
             src={getPlayerImageUrl(p.player_id)} 
@@ -103,7 +135,6 @@ export default function RosterPage() {
             <div>
               {p.lineup_info ? (
                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">
-                  {/* 예: BATTER (1번) - CF */}
                   {p.lineup_info.type} 
                   {p.lineup_info.type === 'BATTER' && ` (${p.lineup_info.order}번)`}
                   {p.lineup_info.defensive_pos && ` - ${p.lineup_info.defensive_pos}`}
@@ -116,6 +147,13 @@ export default function RosterPage() {
           </div>
         ))}
       </div>
+
+      <PlayerCardModal 
+        isOpen={!!selectedPlayer} 
+        onClose={() => setSelectedPlayer(null)} 
+        player={selectedPlayer}
+        title="Player Info"
+      />
     </div>
   );
 }

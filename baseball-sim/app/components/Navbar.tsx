@@ -29,6 +29,9 @@ export default function Navbar() {
           <div className="flex gap-4 text-sm font-medium">
             <Link href="/roster" className="hover:text-yellow-200 transition">선수단 관리</Link>
             <Link href="/lineup" className="hover:text-yellow-200 transition">라인업 설정</Link>
+            <Link href="/league" className="hover:text-yellow-200 transition">리그 순위</Link>
+            <Link href="/schedule" className="hover:text-yellow-200 transition">경기 일정</Link>
+            <Link href="/my-team" className="hover:text-yellow-200 transition">구단 정보</Link>
           </div>
         )}
       </div>
