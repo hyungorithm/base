@@ -6,7 +6,7 @@ import { Session } from "@supabase/supabase-js";
 
 type UserProfile = {
   user_id: string;
-  email: string; // (선택) 편의상 넣어두면 좋음
+  email?: string; // (선택) 편의상 넣어두면 좋음
   coins: number;
   nickname: string;  // 추가
   team_name: string; // 추가
