@@ -19,6 +19,8 @@ export type SimPlayer = {
 
 // 박스스코어용 스탯
 export type PlayerStats = {
+  name: string;
+
   // 타자
   ab: number; // 타수
   h: number;  // 안타
@@ -100,7 +102,7 @@ export function simulateGame(
   const allPlayers = [...homeBatters, ...homePitchers, ...awayBatters, ...awayPitchers];
   
   allPlayers.forEach(p => {
-    stats[p.id] = { ab: 0, h: 0, hr: 0, rbi: 0, r: 0, bb: 0, so: 0, ip: 0, er: 0, k: 0 };
+    stats[p.id] = { name: p.name, ab: 0, h: 0, hr: 0, rbi: 0, r: 0, bb: 0, so: 0, ip: 0, er: 0, k: 0 };
   });
 
   let homeIdx = 0;

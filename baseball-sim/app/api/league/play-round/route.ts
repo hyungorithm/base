@@ -9,10 +9,26 @@ const supabase = createClient(
 
 export async function POST(req: Request) {
   try {
-    const { round } = await req.json(); // 예: { "round": 1 }
+    // 1. 요청에서 round가 있는지 확인 (Admin 수동 실행용)
+    let { round } = await req.json().catch(() => ({}));
 
-    if (!round) return NextResponse.json({ error: "라운드 정보가 없습니다." }, { status: 400 });
+    // 2. round가 없으면(자동 실행), DB에서 '진행 안 된 첫 번째 라운드' 찾기
+    if (!round) {
+      const { data: nextMatch } = await supabase
+        .from("matches")
+        .select("round_no")
+        .eq("is_played", false)
+        .order("round_no", { ascending: true })
+        .limit(1)
+        .single();
 
+      if (nextMatch) {
+        round = nextMatch.round_no;
+      } else {
+        return NextResponse.json({ message: "모든 경기가 종료되었습니다." });
+      }
+    }
+    
     // 1. 현재 라운드의 '진행되지 않은' 경기들 가져오기
     const { data: matches } = await supabase
       .from("matches")
@@ -89,6 +105,14 @@ export async function POST(req: Request) {
         p_draw: stat.d
       });
     }
+
+    // 5. 선수 성장 로직 실행 (Process Growth)
+    
+    const growthPromises = matches.map((match) => 
+      supabase.rpc("process_match_growth", { match_id_input: match.id })
+    );
+
+    await Promise.all(growthPromises);
 
     return NextResponse.json({ success: true, played: resultsToUpdate.length });
 

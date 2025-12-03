@@ -32,6 +32,7 @@ export default function Navbar() {
             <Link href="/league" className="hover:text-yellow-200 transition">리그 순위</Link>
             <Link href="/schedule" className="hover:text-yellow-200 transition">경기 일정</Link>
             <Link href="/my-team" className="hover:text-yellow-200 transition">구단 정보</Link>
+            <Link href="/scout" className="hover:text-yellow-200 transition">스카우트</Link>
           </div>
         )}
       </div>

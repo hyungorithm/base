@@ -64,20 +64,9 @@ export default function MatchDetailModal({ isOpen, onClose, matchData }: Props) 
             if (!stat) return null;
             if (isPitcher && stat.ip === 0 && stat.er === 0 && stat.k === 0) return null;
             
-            // 이름 찾기 (로그나 스탯 객체엔 이름이 없으므로, result_data 구조에 따라 다를 수 있음)
-            // *주의: 현재 DB 구조상 result_data.stats에는 이름이 없습니다.
-            // 해결책: result_data를 저장할 때 선수 이름도 같이 저장하거나, 
-            // 여기서는 편의상 "Player {id}"로 표시하거나, 로그에서 이름을 역추적해야 합니다.
-            // **가장 좋은 방법은 gameEngine.ts에서 stats 저장할 때 이름도 같이 저장하는 것입니다.**
-            // 지금은 임시로 로그에서 이름을 찾거나 'Unknown'으로 표시합니다.
-            
-            // (임시 로직: 로그에서 해당 ID의 이름을 찾을 수 없으므로, 
-            //  실제로는 gameEngine을 수정해서 stats에 name 필드를 추가하는게 좋습니다.
-            //  여기서는 일단 스탯만 보여줍니다.)
-            
             return (
               <tr key={id} className="border-b last:border-0">
-                <td className="p-2 font-medium text-gray-700">No.{id}</td> 
+                <td className="p-2 font-medium text-gray-700">{stat.name}</td> 
                 {isPitcher ? (
                   <>
                     <td className="p-2">{Math.floor(stat.ip / 3)}.{stat.ip % 3}</td>

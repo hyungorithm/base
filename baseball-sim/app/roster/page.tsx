@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "../providers/AuthProvider";
 import { getPlayerImageUrl } from "@/lib/utils";
-import PlayerCardModal, { PlayerCardData } from "@/app/components/PlayerCardModal";
 
-// 타입 정의 업데이트 (스탯 정보 추가)
+// [수정 1] 모달 컴포넌트와 데이터 타입을 올바른 경로에서 가져옵니다.
+import PlayerCardModal from "@/app/components/PlayerCardModal";
+import { PlayerCardData } from "@/app/components/PlayerCard"; 
+
 type PlayerWithStatus = {
   roster_id: number;
   player_id: number;
@@ -14,7 +16,6 @@ type PlayerWithStatus = {
   primary_position: string;
   secondary_position: string | null;
   overall: number;
-  // [추가] 여기서 필요한 정보들을 정의
   birth_year: number;
   stat_1: number;
   stat_2: number;
@@ -30,7 +31,7 @@ type PlayerWithStatus = {
 
 export default function RosterPage() {
   const { session } = useAuth();
-  const [roster, setRoster] = useState<PlayerWithStatus[]>([]); // any 대신 타입 사용 권장
+  const [roster, setRoster] = useState<PlayerWithStatus[]>([]);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerCardData | null>(null);
 
   useEffect(() => {
@@ -58,13 +59,11 @@ export default function RosterPage() {
             primary_position: r.players.primary_position,
             secondary_position: r.players.secondary_position,
             overall: r.players.overall,
-            
-            // [수정 1] 여기서 DB의 players 객체 안에 있는 정보를 꺼내서 저장해야 합니다.
             birth_year: r.players.birth_year,
             stat_1: r.players.stat_1,
             stat_2: r.players.stat_2,
             stat_3: r.players.stat_3,
-            tier: r.players.tier || "NORMAL", // 혹시 null이면 기본값
+            tier: r.players.tier || "NORMAL",
 
             lineup_info: usage ? {
               type: usage.lineup_type,
@@ -89,7 +88,7 @@ export default function RosterPage() {
       primary_position: p.primary_position,
       secondary_position: p.secondary_position,
       overall: p.overall,
-      birth_year: p.birth_year, // p.players.birth_year (X) -> p.birth_year (O)
+      birth_year: p.birth_year,
       stat_1: p.stat_1,
       stat_2: p.stat_2,
       stat_3: p.stat_3,
@@ -101,37 +100,46 @@ export default function RosterPage() {
   if (!session) return <div>로그인이 필요합니다.</div>;
 
   return (
-    <div>
+    <div className="pb-20"> {/* 하단 여백 추가 */}
       <h2 className="text-2xl font-bold mb-4">보유 선수 목록</h2>
       <div className="grid gap-2">
-      {roster.map((p) => (
-        <div 
-          key={p.roster_id} 
-          onClick={() => handlePlayerClick(p)}
-          className="border p-3 rounded flex justify-between items-center bg-white shadow-sm hover:shadow-md transition cursor-pointer hover:bg-blue-50"
-        >
-        <div className="flex items-center gap-3">
-        <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
-            <img 
-            src={getPlayerImageUrl(p.player_id)} 
-            alt={p.name} 
-            className="w-full h-full object-cover"
-            />
-        </div>
+        {roster.map((p) => (
+          <div 
+            key={p.roster_id} 
+            onClick={() => handlePlayerClick(p)}
+            className="border p-3 rounded flex justify-between items-center bg-white shadow-sm hover:shadow-md transition cursor-pointer hover:bg-blue-50"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden border border-gray-200 bg-gray-50 flex-shrink-0">
+                <img 
+                  src={getPlayerImageUrl(p.player_id)} 
+                  alt={p.name} 
+                  className="w-full h-full object-cover"
+                />
+              </div>
 
-        <div>
-            <div className="flex items-center gap-2">
-            <span className="font-bold text-lg text-gray-800">{p.name}</span>
-            <span className="text-xs font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded">
-                {p.overall}
-            </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-lg text-gray-800">{p.name}</span>
+                  <span className="text-xs font-bold text-white bg-blue-600 px-1.5 py-0.5 rounded">
+                      {p.overall}
+                  </span>
+                  {/* 등급 표시 (선택 사항) */}
+                  {p.tier !== 'NORMAL' && (
+                    <span className={`text-[10px] px-1 rounded border ml-1 font-bold
+                      ${p.tier === 'STAR' ? 'text-purple-700 border-purple-300 bg-purple-50' : 'text-blue-700 border-blue-300 bg-blue-50'}
+                    `}>
+                      {p.tier}
+                    </span>
+                  )}
+                </div>
+                <span className="text-gray-500 text-sm font-medium">
+                  {p.primary_position}
+                  {p.secondary_position && <span className="text-gray-400"> / {p.secondary_position}</span>}
+                </span>
+              </div>
             </div>
-            <span className="text-gray-500 text-sm font-medium">
-            {p.primary_position}
-            {p.secondary_position && <span className="text-gray-400"> / {p.secondary_position}</span>}
-            </span>
-        </div>
-        </div>
+            
             <div>
               {p.lineup_info ? (
                 <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded font-bold">
@@ -148,6 +156,7 @@ export default function RosterPage() {
         ))}
       </div>
 
+      {/* 모달 렌더링 */}
       <PlayerCardModal 
         isOpen={!!selectedPlayer} 
         onClose={() => setSelectedPlayer(null)} 
