@@ -8,7 +8,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AuthProvider>
           <Navbar />
-          <main className="max-w-4xl mx-auto mt-6 px-4">{children}</main>
+          <main className="max-w-6xl mx-auto mt-6 px-4">{children}</main>
         </AuthProvider>
       </body>
     </html>

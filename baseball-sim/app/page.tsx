@@ -3,7 +3,8 @@
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "./providers/AuthProvider";
 import { useState } from "react";
-import PlayerCardModal, { PlayerCardData } from "@/app/components/PlayerCardModal";
+import PlayerCardModal from "@/app/components/PlayerCardModal";
+import { PlayerCardData } from "@/app/components/PlayerCard"; 
 
 export default function Home() {
   const { session, refreshProfile } = useAuth();
